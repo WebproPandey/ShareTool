@@ -4,59 +4,73 @@ import React, { useEffect, useRef, useState } from 'react';
 export default function FindUser({ onConnected, socket }) {
   const radarRef = useRef(null);
   const [isConnected, setIsConnected] = useState(socket.connected);
-  const [socketId, setSocketId] = useState(null);
+  const [socketId, setSocketId] = useState(socket.id);
   const [users, setUsers] = useState([]);
   const [connectedTo, setConnectedTo] = useState(null);
   const [incomingRequest, setIncomingRequest] = useState(null);
 
+  // Radar animation setup
   useEffect(() => {
     radarRef.current?.classList.add("animate-spin-slow");
   }, []);
 
-  console.log(socket)
-
+  // Socket event handlers setup
   useEffect(() => {
-    function onConnect() {
+    const handleConnect = () => {
       setIsConnected(true);
       setSocketId(socket.id);
-    }
+      console.log("✅ Connected:", socket.id);
+    };
 
-    function onDisconnect() {
+    const handleDisconnect = () => {
       setIsConnected(false);
       setSocketId(null);
-    }
+      console.log("❌ Disconnected");
+    };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
+    const handleUsers = (usersList) => {
+      // Remove self and duplicates
+      const filtered = usersList
+        .filter(u => u.id !== socket.id)
+        .filter((v, i, arr) => arr.findIndex(u => u.id === v.id) === i);
 
-    socket.on("users", (usersList) => {
-      const filtered = usersList.filter(u => u.id !== socket.id);
       setUsers(filtered);
 
+      // Handle case where connected user disconnects
       if (connectedTo && !filtered.find(u => u.id === connectedTo)) {
         setConnectedTo(null);
         setIncomingRequest(null);
         alert("⚠️ Connected user has disconnected.");
       }
-    });
-
-    socket.on("connection-request", ({ from }) => {
-      setIncomingRequest(from);
-    });
-
-    socket.on("connection-accepted", ({ from }) => {
-      setConnectedTo(from);
-      onConnected(from); // <- important line to notify App.jsx
-    });
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("users");
-      socket.off("connection-request");
-      socket.off("connection-accepted");
     };
-  }, [connectedTo, onConnected, socket]);
+
+    const handleRequest = ({ from }) => {
+      console.log("🔔 Request from", from);
+      setIncomingRequest(from);
+    };
+
+    const handleAccept = ({ from }) => {
+      console.log("✅ Connection accepted:", from);
+      setConnectedTo(from);
+      onConnected(from);
+    };
+
+    // Attach listeners
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("users", handleUsers);
+    socket.on("connection-request", handleRequest);
+    socket.on("connection-accepted", handleAccept);
+
+    // Cleanup
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("users", handleUsers);
+      socket.off("connection-request", handleRequest);
+      socket.off("connection-accepted", handleAccept);
+    };
+  }, [socket, connectedTo, onConnected]);
 
   const handleRequestConnect = (to) => {
     socket.emit("request-connection", { to });
@@ -66,7 +80,7 @@ export default function FindUser({ onConnected, socket }) {
     socket.emit("accept-connection", { to: incomingRequest });
     setConnectedTo(incomingRequest);
     setIncomingRequest(null);
-    onConnected(incomingRequest); // <- another important line
+    onConnected(incomingRequest);
   };
 
   return (
