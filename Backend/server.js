@@ -52,7 +52,7 @@ app.get('/bonjour-hosts', (req, res) => {
 });
 
 const PORT = 5000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server on port ${PORT}`);
   bonjour().publish({ name: 'OfflineShare', type: 'http', port: PORT });
 });
