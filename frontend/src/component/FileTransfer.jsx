@@ -1,15 +1,9 @@
-// ✅ FILE: src/components/FileTransfer.jsx
 import React, { useEffect, useState } from 'react';
-import { createSocket } from '../socket';
 
-const socket = createSocket(); 
-
-export default function FileTransfer({ role, connectedTo }) {
+export default function FileTransfer({ role, connectedTo, socket }) {
   const [file, setFile] = useState(null);
   const [receivedFile, setReceivedFile] = useState(null);
   const [transferStatus, setTransferStatus] = useState('');
-
-  console.log("file",file , "resiverfile" ,receivedFile)
 
   const handleSend = () => {
     if (!file) return;
@@ -35,7 +29,7 @@ export default function FileTransfer({ role, connectedTo }) {
     return () => {
       socket.off("receive-file");
     };
-  }, []);
+  }, [socket]);
 
   return (
     <div className="min-h-screen bg-white p-8 text-center">
